@@ -143,7 +143,8 @@ void check_gemm(const float *h_a, const float *h_b, const float *h_check,
     //tile_sgemm_v1<<<gridsz, blocksz>>>(d_a_tile, d_b_tile, d_c_tile, tile_M_num, tile_K_num, tile_N_num, M, K, N);
     // SGEMM::tile_sgemm_v1<<<gridsz, blocksz>>>(d_a_tile, d_b_tile, d_c_tile, tile_M_num, tile_K_num, tile_N_num, M, K, N);
     //tile_sgemm_v1<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
-    tile_sgemm_v2<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
+    //tile_sgemm_v2<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
+    tile_sgemm_v3<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
     cudaDeviceSynchronize();
     timer.Stop();
     time_cost = timer.Elapsed();
@@ -261,7 +262,7 @@ void get_Performance(const float *h_a, const float *h_b,
     double cublas_Performance = calc_Performance(h_a, h_b, size_a, size_b, size_c, M, N, K, repeat, EXECcuBLAS, avg_runtime);
     printf("AVG_cublas_RunTime = %lf sec\n", avg_runtime);
     double mygemm_Performance = calc_Performance(h_a, h_b, size_a, size_b, size_c, M, N, K, repeat, EXECtileGemm, avg_runtime);
-    printf("AVG_tile_RunTime = %lf sec\n", avg_runtime);
+    printf("AVG_mygemm_RunTime = %lf sec\n", avg_runtime);
     printf("AVG_cublas_Performance = %lf Gflops\n", cublas_Performance);
     printf("AVG_mygemm_Performance = %lf Gflops\n", mygemm_Performance);
 }
@@ -269,13 +270,13 @@ void get_Performance(const float *h_a, const float *h_b,
 
 void test_diff_size_gemm()
 {
-    int size_arr[5] = {1024, 2048, 4096, 8192, 12288};
-    for (int i = 0; i < 5; i++)
+    int size_arr[10] = {1024, 1234, 2048, 2233, 4096, 5566, 8192, 8999, 10080, 12288};
+    for (int i = 0; i < 10; i++)
     {
         const int M = size_arr[i];
         const int K = size_arr[i];
         const int N = size_arr[i];
-        
+        std::cout<<"Matrix Size : "<<M<<std::endl;
 
         float *h_a, *h_b;
 
@@ -299,7 +300,8 @@ void test_diff_size_gemm()
             
         //check_acc(h_a, h_b, size_a, size_b, size_c, M, K, N);
         get_Performance(h_a, h_b, size_a, size_b, size_c, M, K, N);
-
+        std::cout<<std::endl;
+        
         free(h_a);
         free(h_b);
     }
