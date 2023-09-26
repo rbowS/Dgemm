@@ -24,11 +24,13 @@ void check_acc(const float *h_a, const float *h_b,
 
 void get_Performance(const float *h_a, const float *h_b,
                const int size_a, const int size_b, const int size_c,
-               const int M, const int K, const int N);
+               const int M, const int K, const int N, const int repeat);
 
 void test_diff_size_gemm();
 
 
 void test_diff_size_gemm_acc();
+
+void test_diff_size_gemm_ones();
 
 #endif

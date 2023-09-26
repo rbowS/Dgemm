@@ -53,9 +53,9 @@ double calc_Performance(const float *h_a, const float *h_b,
             break;
         }
         case EXECtileGemm: {
-            const int tile_M_sz = 64;
+            const int tile_M_sz = 128;
             //const int tile_K_sz = 64;
-            const int tile_N_sz = 64;
+            const int tile_N_sz = 128;
             int tile_M_num = (M + tile_M_sz - 1) / tile_M_sz;
             //int tile_K_num = (K + tile_K_sz - 1) / tile_K_sz;
             int tile_N_num = (N + tile_N_sz - 1) / tile_N_sz;
@@ -63,7 +63,7 @@ double calc_Performance(const float *h_a, const float *h_b,
             dim3 gridsz(tile_M_num, tile_N_num);
             timer.Start();
             for (int i = 0; i < repeat; i++) {
-                tile_sgemm_v2<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
+                tile_sgemm_vf3<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
             }
             cudaDeviceSynchronize();
             timer.Stop();
@@ -94,10 +94,17 @@ void check_gemm(const float *h_a, const float *h_b, const float *h_check,
 
     
     //v2
-    
+    /*
     const int tile_M_sz = 64;
-    const int tile_K_sz = 64;
+    const int tile_K_sz = 32;
     const int tile_N_sz = 64;
+    */
+   
+    
+    const int tile_M_sz = 128;
+    const int tile_K_sz = 8;
+    const int tile_N_sz = 128;
+    //const int tile_N_sz = 128;
     
     
 
@@ -143,8 +150,10 @@ void check_gemm(const float *h_a, const float *h_b, const float *h_check,
     //tile_sgemm_v1<<<gridsz, blocksz>>>(d_a_tile, d_b_tile, d_c_tile, tile_M_num, tile_K_num, tile_N_num, M, K, N);
     // SGEMM::tile_sgemm_v1<<<gridsz, blocksz>>>(d_a_tile, d_b_tile, d_c_tile, tile_M_num, tile_K_num, tile_N_num, M, K, N);
     //tile_sgemm_v1<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
-    //tile_sgemm_v2<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
-    tile_sgemm_v3<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
+    //tile_sgemm_v3<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
+    //tile_sgemm_v4<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
+    tile_sgemm_vf<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
+    //tile_sgemm_vf2_trans<<<gridsz, blocksz>>>(d_a, d_b, d_c, M, K, N);
     cudaDeviceSynchronize();
     timer.Stop();
     time_cost = timer.Elapsed();
@@ -255,10 +264,9 @@ void check_acc(const float *h_a, const float *h_b,
 
 void get_Performance(const float *h_a, const float *h_b,
                const int size_a, const int size_b, const int size_c,
-               const int M, const int K, const int N)
+               const int M, const int K, const int N, int repeat)
 {
     float avg_runtime;
-    const int repeat = 20;
     double cublas_Performance = calc_Performance(h_a, h_b, size_a, size_b, size_c, M, N, K, repeat, EXECcuBLAS, avg_runtime);
     printf("AVG_cublas_RunTime = %lf sec\n", avg_runtime);
     double mygemm_Performance = calc_Performance(h_a, h_b, size_a, size_b, size_c, M, N, K, repeat, EXECtileGemm, avg_runtime);
@@ -271,6 +279,7 @@ void get_Performance(const float *h_a, const float *h_b,
 void test_diff_size_gemm()
 {
     int size_arr[10] = {1024, 1234, 2048, 2233, 4096, 5566, 8192, 8999, 10080, 12288};
+    const int repeat = 20;
     for (int i = 0; i < 10; i++)
     {
         const int M = size_arr[i];
@@ -299,7 +308,7 @@ void test_diff_size_gemm()
         }
             
         //check_acc(h_a, h_b, size_a, size_b, size_c, M, K, N);
-        get_Performance(h_a, h_b, size_a, size_b, size_c, M, K, N);
+        get_Performance(h_a, h_b, size_a, size_b, size_c, M, K, N, repeat);
         std::cout<<std::endl;
         
         free(h_a);
@@ -309,10 +318,11 @@ void test_diff_size_gemm()
 }
 
 
-void test_diff_size_gemm_acc()
+void test_diff_size_gemm_ones()
 {
-    int size_arr[5] = {1024, 1234, 2048, 2345, 4096};
-    for (int i = 0; i < 5; i++)
+    int size_arr[10] = {1024, 1056, 2048, 2080, 4096, 4160, 8192, 8320, 12288, 16384};
+    const int repeat = 1;
+    for (int i = 0; i < 10; i++)
     {
         const int M = size_arr[i];
         const int K = size_arr[i];
@@ -336,6 +346,49 @@ void test_diff_size_gemm_acc()
             
         for (int i = 0; i < K * N; i++)
         {
+            h_b[i] = rand() / float(RAND_MAX);
+        }
+            
+        //check_acc(h_a, h_b, size_a, size_b, size_c, M, K, N);
+        get_Performance(h_a, h_b, size_a, size_b, size_c, M, K, N, repeat);
+        std::cout<<std::endl;
+        
+        free(h_a);
+        free(h_b);
+    }
+    
+}
+
+
+void test_diff_size_gemm_acc()
+{
+    int size_arr[5] = {1024, 2048, 4096, 8192, 10080};
+    for (int i = 0; i < 5; i++)
+    {
+        const int M = size_arr[i];
+        const int K = size_arr[i];
+        const int N = size_arr[i];
+        std::cout<<"Matrix Size : "<<M<<std::endl;
+
+        float *h_a, *h_b;
+
+        int size_a = M * K * sizeof(float);
+        int size_b = K * N * sizeof(float);
+        int size_c = M * N * sizeof(float);
+
+        h_a = (float *)malloc(size_a);
+        h_b = (float *)malloc(size_b);
+
+        // h_a[i] = rand() / float(RAND_MAX);
+        for (int i = 0; i < M * K; i++)
+        {
+            //h_a[i] = 0.5;
+            h_a[i] = rand() / float(RAND_MAX);
+        }
+            
+        for (int i = 0; i < K * N; i++)
+        {
+            //h_b[i] = 0.5;
             h_b[i] = rand() / float(RAND_MAX);
         }
             

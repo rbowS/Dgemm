@@ -2,7 +2,7 @@
 
 # Compiler and flags
 NVCC := nvcc
-CFLAGS := -std=c++11 -O3 -lcublas -arch=sm_80 -I./include 
+CFLAGS := -std=c++11 -lcublas -arch=sm_80 -I./include 
 
 # Directories
 SRC_DIR := ./src
